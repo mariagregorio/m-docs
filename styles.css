@@ -1,0 +1,119 @@
+
+.ubuntu-mono-regular {
+    font-family: 'Ubuntu Mono', monospace;
+    font-weight: 400;
+    font-style: normal;
+}
+
+.ubuntu-mono-bold {
+    font-family: 'Ubuntu Mono', monospace;
+    font-weight: 700;
+    font-style: normal;
+}
+
+.ubuntu-mono-regular-italic {
+    font-family: 'Ubuntu Mono', monospace;
+    font-weight: 400;
+    font-style: italic;
+}
+
+.ubuntu-mono-bold-italic {
+    font-family: 'Ubuntu Mono', monospace;
+    font-weight: 700;
+    font-style: italic;
+}
+.ubuntu-light {
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 300;
+    font-style: normal;
+}
+
+.ubuntu-regular {
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 400;
+    font-style: normal;
+}
+
+.ubuntu-medium {
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 500;
+    font-style: normal;
+}
+
+.container {
+    max-width: 900px;
+    box-sizing: border-box;
+    padding: 2rem;
+    margin: 2rem auto;
+}
+
+body {
+    font-family: 'Ubuntu', sans-serif;
+    font-weight: 400;
+    font-style: normal;
+    background-color: #F5F5F5;
+    color: #17202A;
+}
+p {
+    line-height: 1.7;
+    text-align: justify;
+    font-size: 16px;
+}
+
+li {
+    line-height: 2;
+}
+
+h1, h2 {
+    font-weight: 500;
+}
+b {
+    font-weight: 500;
+}
+
+.emphasis {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    box-sizing: border-box;
+    margin: 1rem auto;
+    border-left: 5px solid #EFEBE9;
+}
+
+a {
+    color: #5D4037;
+}
+
+.code-block {
+    font-family: 'Ubuntu Mono', monospace;
+    font-weight: 400;
+    font-style: normal;
+    width: 100%;
+    padding: 1rem 1.5rem;
+    box-sizing: border-box;
+    margin: 1rem auto 2rem auto;
+    background-color: #EFEBE9;
+}
+
+.code {
+    font-family: 'Ubuntu Mono', monospace;
+    font-weight: 400;
+    font-style: normal;
+    background-color: #EFEBE9;
+}
+
+.image-block {
+    width: 100%;
+    border: 1px solid #EFEBE9;
+    box-sizing: border-box;
+    padding: 1rem;
+    margin: 3rem auto;
+}
+
+.image-block img {
+    max-width: 100%;
+    height: auto;
+}
+
+.back-button {
+    margin-bottom: 3rem;
+}

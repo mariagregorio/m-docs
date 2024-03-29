@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Monitoring: Traces with AWS X-Ray</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Ubuntu+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Ubuntu:wght@300;400;500&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="../styles.css" />
+    </head>
+    <body>
+        <div class="container">
+            <div class="back-button"><a href="../index.html">← Back</a></div>
+            <h1>Monitoring: Traces with AWS X-Ray</h1>
+            <div>
+                <p>Let's start by noticing the importance of the concept of <b>Monitoring</b>.</p>
+                <p>Monitoring can make our life a lot easier, it can help us:</p>
+                <ul>
+                    <li>Prevent issues or be able to find issues before the client does.</li>
+                    <li>If a bug was already found, we can track it's root cause faster</li>
+                    <li>Find where performance can be optimized</li>
+                    <li>Plan scalling by analyzing current trends</li>
+                </ul>
+
+                <p>
+                    AWS provides a variety of tools for monitoring, but today i want to focus on
+                    X-Ray, a tool for adding <b>traces</b> to our app, and also create some cool
+                    <b>Service maps</b> of the components of our apps to help us visualize the big
+                    picture and see how components interact.
+                </p>
+
+                <p>
+                    In a microservices architechture, it becomes a tedious task to debug errors,
+                    tracking them or analyze how the app is performing using the regular tools like
+                    checking the production logs or attempting to reproduce the bug locally and
+                    adding a bunch of logs along the way to track the request to the point it fails.
+                </p>
+
+                <p>
+                    This is when traces become handy, and there are a bunch of tools out there that
+                    can can do this for us (Sentry, Datadog, etc). AWS X-Ray is the tracing service
+                    that AWS offers, and because we are already using AWS for our infrastructure,
+                    it's a natural choice to start exploring.
+                </p>
+
+                <p>
+                    Tracing allows you to track a particular request in your app, end to end, and
+                    get useful information about it.
+                </p>
+                <p>
+                    A trace is basically all the data collected from a request end to end. These
+                    traces are made of <b>segments</b>, which represent components that deal with
+                    the request, and <b>sub segments</b> which we can manually add in our code to
+                    provide more specific data (for example, collect data from a call to a third
+                    party API and put it in a sub segment to later analyze the latency of that API
+                    call).
+                </p>
+
+                <p>
+                    By default, only a certain percent of requests are traced, this is called
+                    <b>sampling</b>. By default, the first request each second, and five percent of
+                    any additional requests are recorded, but we can configure this and change it to
+                    our needs.
+                </p>
+
+                <p>
+                    To enable Xray, some services like Lambda only require a configuration change,
+                    and for some other services we need to add some minor code changes using the
+                    X-Ray SDK. This is known as <b>instrumenting</b> the app.
+                </p>
+            </div>
+            <div>
+                <h2>Demo</h2>
+                <p>
+                    We will be using a small demo project to get started with Xray. The project uses
+                    Node.js with Typescript and Serverless Framework.
+                </p>
+
+                <div class="emphasis">
+                    Clone
+                    <a href="https://github.com/mariagregorio/aws-xray-project" target="_blank"
+                        >this repo</a
+                    >
+                    to follow along
+                </div>
+                <p>
+                    We have a lambda function that is triggered by a POST request to an API Gateway
+                    resource. The lambda has some logic that calls a thrid party API and saves data
+                    to a DynamoDB table. It's a very simple example just to illustrate how tracing
+                    works, which are the steps needed to get started, picture how it would look in a
+                    more complex project, and how we could benefit from it.
+                </p>
+                <p>
+                    Some services can provide traces by just setting a configuration, that would be
+                    the case of Lambda and API Gateway in our example.
+                </p>
+                <p>
+                    The first step is to enable Xray tracing by adding the tracing attribute under
+                    provider to our Serverless configuration yml.
+                </p>
+                <p>
+                    This can also be done by activating tracing in the configuration in the Lambda
+                    and API Gateway stage, using the AWS console. We also need to add the
+                    permissions required to create traces under iamRoleStatements.
+                </p>
+
+                <div class="code-block">
+                    provider:<br />
+                    &nbsp;&nbsp;name: aws<br />
+                    &nbsp;&nbsp;runtime: nodejs18.x<br />
+                    &nbsp;&nbsp;tracing:<br />
+                    &nbsp;&nbsp;&nbsp;&nbsp;lambda: true<br />
+                    &nbsp;&nbsp;&nbsp;&nbsp;apiGateway: true<br />
+                    iam:<br />
+                    &nbsp;&nbsp;role:<br />
+                    &nbsp;&nbsp;&nbsp;&nbsp;statements: <br />
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Effect: Allow<br />
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Action: <br />
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- dynamodb:PutItem<br />
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- xray:PutTraceSegments<br />
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- xray:PutTelemetryRecords<br />
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Resource: <br />
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- '*'<br />
+                </div>
+                <p>
+                    To provide traces for other services used in our Lambda like Dynamo, it is
+                    necessary to use the SDK for X-Ray, and capture the Dynamo client by wrapping it
+                    with the <span class="code">captureAWSv3Client</span> function provided by the
+                    SDK. This way, all calls to Dynamo client will be intercepted by Xray to get
+                    tracing data.
+                </p>
+
+                <p>1) Install the package</p>
+                <div class="code-block">$ npm install aws-xray-sdk-core</div>
+
+                <p>2) Import default from <span class="code">aws-xray-sdk-core</span></p>
+
+                <div class="code-block">import AWSXRay from 'aws-xray-sdk-core';</div>
+
+                <p>
+                    3) "Wrap" the Dynamo client instance with
+                    <span class="code">AWSXRay.captureAWSv3Client</span>
+                </p>
+                <div class="code-block">
+                    export const client = AWSXRay.captureAWSv3Client(new DynamoDBClient({ region:
+                    'us-east-1' }));
+                </div>
+
+                <p>And now we can get traces from the Put command used in our code.</p>
+
+                <p>
+                    The next thing that I want to cover, is the external API call we have in our
+                    code. This can be userful to later measure the latency of the call, for example.
+                </p>
+                <p>
+                    For this we can create a subsegment inside our lambda segment to provide this
+                    information.
+                </p>
+
+                <p>
+                    To create the subsegment, first we need to get the current segment we are
+                    working on, which in our case is the lambda function.
+                </p>
+
+                <div class="code-block">
+                    const segment = AWSXRay.getSegment(); //returns the facade segment
+                </div>
+
+                <p>Then create the subsegment using addNewSubsegment, and give it a name.</p>
+
+                <div class="code-block">
+                    const subsegment = segment.addNewSubsegment('CurrencyAPIcall');
+                </div>
+
+                <p>
+                    As part of the instrumentation, we can add annotations and metadata to segments
+                    or subsegments. Annotations are meant to be short pieces of information that we
+                    can later use for filtering and grouping traces according to our needs, and
+                    metadata is useful to record data of any type that we want to keep in our traces
+                    but don't need to be used for filtering.
+                </p>
+
+                <p>
+                    To illustrate it, we can add an annotation to our sub segment, providing the
+                    currency information received from the body of the request, and maybe later use
+                    it to filter traces with a particular value for currency.
+                </p>
+
+                <div class="code-block">
+                    subsegment.addAnnotation('currency', parsedBody.price.currency);
+                </div>
+
+                <p>
+                    Now we also want to be able to tell when there is an error calling this API, and
+                    for that we need to call addError on the sub segment on the catch block.
+                </p>
+
+                <div class="code-block">
+                    subsegment.addError(`Error on currency convertion API call
+                    ${JSON.stringify(e)}`);
+                </div>
+
+                <p>
+                    also remember to close the subsegment when the operation we are tracing is
+                    completed.
+                </p>
+
+                <div class="code-block">subsegment.close();</div>
+
+                <p>
+                    We are ready to deploy and try sending a request to see how this looks. To check
+                    the traces, look for the Cloudwatch service, and on the left panel, find X-Ray
+                    traces.
+                </p>
+
+                <div class="image-block">
+                    <img src="monitoring-aws-xray/Screenshot1.png" alt="AWS X-Ray" />
+                </div>
+
+                <p>
+                    After making a request to the API endpoint, we can go to Traces and find a brand
+                    new trace.
+                </p>
+                <p>
+                    Scroll down to see a list of the latest traces, and click on the ID of the
+                    latest trace to see the details.
+                </p>
+
+                <div class="image-block">
+                    <img src="monitoring-aws-xray/Screenshot2.png" alt="AWS X-Ray" />
+                </div>
+
+                <p>
+                    Here we can see the <b>Service map</b>, which may look simple, but you can
+                    visualize how in a bigger service with more components, this can act like an
+                    architecture diagram that helps you understand th interaction between components
+                    and the flow of the request.
+                </p>
+
+                <div class="image-block">
+                    <img src="monitoring-aws-xray/Screenshot3.png" alt="AWS X-Ray" />
+                </div>
+
+                <p>
+                    Scroll down to see a detail of what happens inside each of the segments and
+                    subsegments. Here we can see the subsegment we created, the duration of the API
+                    call and all the other executions. And by clicking on one of them, you can see a
+                    right panel show the information for annotations, metadata, exceptions and more.
+                </p>
+                <div class="image-block">
+                    <img src="monitoring-aws-xray/Screenshot4.png" alt="AWS X-Ray" />
+                </div>
+
+                <p>
+                    Now let's simulate an error in the currency API call to see how this will look
+                    on the trace.
+                </p>
+                <div class="image-block">
+                    <img src="monitoring-aws-xray/Screenshot5.png" alt="AWS X-Ray" />
+                </div>
+
+                <div class="image-block">
+                    <img src="monitoring-aws-xray/Screenshot6.png" alt="AWS X-Ray" />
+                </div>
+
+                <p>
+                    We can see the details in the error we added to our subsegment, and we can
+                    visualize exactly what happened, and the point the request could reach until it
+                    failed.
+                </p>
+                <p>
+                    Finally, with the annotation we created for currency, we can make queries to
+                    filter traces, and find the exact cases we want to analyze. For example, let's
+                    add <span class="code">annotation.currency = "MXN"</span> to filter traces with
+                    value "MXN" in the annotation key currency
+                </p>
+                <div class="image-block">
+                    <img src="monitoring-aws-xray/Screenshot7.png" alt="AWS X-Ray" />
+                </div>
+                <p>
+                    There is a lot more to explore here, but I hope that this serves as a starting
+                    point and that you can see the potential of this tool and how useful it can be
+                    for your project.
+                </p>
+            </div>
+        </div>
+    </body>
+</html>
